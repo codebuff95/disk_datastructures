@@ -1,9 +1,9 @@
 import shelve,mmu,sys
 from btree_errors import *
+from random import randint
 MAX_KEYS = 5
 ROOT_PTR = '-1'
 NONE_PTR = '-2'
-NODE_COUNT_PTR = '-3'
 class Node:
     def __init__(self):
         self.keys = []  #a list of tuples, each of format: (key,location)
@@ -27,13 +27,9 @@ class BTree:
     def __exit__(self,*args):
         self.tree.close()
     def get_root(self):
-        try:
-            #root = self.tree[ROOT_PTR]
-            root = self.get_node(ROOT_PTR)
-            return root
-        except KeyNotExistsError as e:
-            print('root does not exist in the provided shelve! aborting the program!')
-            sys.exit()
+        #root = self.tree[ROOT_PTR]
+        root = self.get_node(ROOT_PTR)
+        return root
 
     def get_node(self,ptr):
         """returns a tuple of Node object and the number of disk accesses taken to retrieve the node"""
@@ -43,7 +39,7 @@ class BTree:
             retval = self.mmu.retrieve_block(self.tree,ptr)
             return retval
         except KeyError:
-            raise KeyNotExistsError
+            raise NodeNotExistsError
 
     def get_key(self,requested_key):
         """
@@ -68,8 +64,15 @@ class BTree:
         return self.mmu.write_block(self.tree,key,value)
 
     def get_new_node_ptr(self):
-        return int(self.mmu.retrieve_block(self.tree,NODE_COUNT_PTR)[0]) + 1
-
+        #return int(self.mmu.retrieve_block(self.tree,NODE_COUNT_PTR)[0]) + 1
+        s = ''
+        for i in range(16):
+            s += str(randint(0,9))
+        try:
+            self.get_node(s)[0]
+            return self.get_new_node_ptr()
+        except NodeNotExistsError:
+            return s
     def split_root(self):
         old_root = self.get_root()[0]  #old_root will become the 0th child of new_node.
         new_root = Node()   #new_root is the new root of the tree.
@@ -80,13 +83,12 @@ class BTree:
         old_root.childs = old_root.childs[:(MAX_KEYS//2)+1]
         old_root.keys = old_root.keys[:(MAX_KEYS//2)]
         old_root_ptr = self.get_new_node_ptr()
-        new_child_ptr = old_root_ptr + 1
+        new_child_ptr = self.get_new_node_ptr()
         new_root.childs.append(old_root_ptr)
         new_root.childs.append(new_child_ptr)
         self.persist_changes(ROOT_PTR,new_root)
         self.persist_changes(old_root_ptr,old_root)
         self.persist_changes(new_child_ptr,new_child)
-        self.persist_changes(NODE_COUNT_PTR,new_child_ptr)
 
     def split_node(self,childptr,parentptr):
         """splits a non-root node."""
@@ -100,7 +102,6 @@ class BTree:
             ins_index += 1
 
         parent_node.keys.insert(ins_index,mid_key)
-        #child_node ins_index + 1 childptr will get the newly created node.
         new_node = Node()
         new_node.keys = child_node.keys[(MAX_KEYS//2)+1:]
         new_node.childs = child_node.childs[(MAX_KEYS//2)+1:]
@@ -111,15 +112,26 @@ class BTree:
         self.persist_changes(parentptr,parent_node)
         self.persist_changes(childptr,child_node)
         self.persist_changes(new_node_ptr,new_node)
-        self.persist_changes(NODE_COUNT_PTR,new_node_ptr)
-
+    def insert_seed(self,key,data):
+        try:
+            root,local_d_a_c = self.get_root()
+            raise TreeAlreadySeededError
+        except NodeNotExistsError:
+            pass
+        new_root = Node()
+        new_root.keys.append((key,data))
+        self.persist_changes(ROOT_PTR,new_root)
+        return 1    #1 disk access done.
     def insert_key(self,key,data):
         #key = key to be inserted, data = data to be inserted.
+        try:
+            (cur_node,local_d_a_c) = self.get_root()
+        except NodeNotExistsError:
+            return self.insert_seed(key,data)
         (temp_key,disk_access_count) = self.get_key(key)
         if temp_key != None:
             print('key to be inserted already exists in the tree')
             raise KeyExistsError
-        (cur_node,local_d_a_c) = self.get_root()
         cur_node_ptr = ROOT_PTR
         if len(cur_node.keys) >= MAX_KEYS:
             #root is full. split root.
@@ -148,9 +160,9 @@ class BTree:
                 cur_node = child_node
                 cur_node_ptr = child_node_ptr
         # cur_node must be the leaf node, insert (key,data) in it.
-        self.insert_key_in_node(key,data,cur_node_ptr)
+        self._insert_key_in_node(key,data,cur_node_ptr)
         return disk_access_count
-    def insert_key_in_node(self,key,data,nodeptr):
+    def _insert_key_in_node(self,key,data,nodeptr):
         """Assuming that insertions will take place only in leaf nodes. ie, the node will have an empty childs list"""
         (my_node,local_d_a_c) = self.get_node(nodeptr)
         if len(my_node.childs) > 0:
@@ -166,13 +178,27 @@ class BTree:
             ins_index += 1
         my_node.keys.insert(ins_index,tuple((key,data)))
         return self.persist_changes(nodeptr,my_node)
-if __name__ == '__main__':
-    with BTree('hello') as my_btr:
-        #i = 10
-        #while i < 12:
-        #    my_btr.insert_key('acc'+str(i),'loc'+str(i))
-        #    i += 1
-        node,accesses = my_btr.get_node(4)
-        print(node,'\nAccesses = ',accesses)
-        #my_btr.insert_key('acc60','loc60')
-        #print(my_btr.get_key('accno002'))
+    def _get_key_count(self,nodeptr):
+        node = self.get_node(nodeptr)[0]
+        k_c = len(node.keys)
+        for child in node.childs:
+            k_c += self._get_key_count(child)
+        return k_c
+    def get_key_count(self):
+        root = self.get_root()[0]
+        k_c = len(root.keys)
+        for child in root.childs:
+            k_c += self._get_key_count(child)
+        return k_c
+    def _get_height(self,nodeptr,h_till_now):
+        node = self.get_node(nodeptr)[0]
+        h = h_till_now
+        for childptr in node.childs:
+            h = max(h,self._get_height(childptr,h_till_now + 1))
+        return h
+    def get_height(self):
+        root = self.get_root()[0]
+        h = 0
+        for child in root.childs:
+            h = max(h,self._get_height(child,1))
+        return h

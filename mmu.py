@@ -1,9 +1,10 @@
 """The module for the Memory Management Unit used in this project"""
 import shelve
+MAX_FRAMES = 20
 class MMU:
     def __init__(self):
         self.frames = []
-        self.max_frames = 8
+        self.max_frames = MAX_FRAMES
     def retrieve_block(self,my_btree,btree_ptr):#my_btree is a shelve.
         """returns a tuple of Node object and the number of disk accesses taken to retrieve the object"""
         btree_ptr = str(btree_ptr)

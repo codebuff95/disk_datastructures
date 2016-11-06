@@ -4,5 +4,7 @@ class NotLeafError(Exception):
     pass
 class KeyExistsError(Exception):
     pass
-class KeyNotExistsError(Exception):
+class NodeNotExistsError(Exception):
+    pass
+class TreeAlreadySeededError(Exception):
     pass
