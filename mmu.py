@@ -6,6 +6,7 @@ class MMU:
         self.max_frames = 8
     def retrieve_block(self,my_btree,btree_ptr):#my_btree is a shelve.
         """returns a tuple of Node object and the number of disk accesses taken to retrieve the object"""
+        btree_ptr = str(btree_ptr)
         if self.frames.count(btree_ptr) > 0:
             #the block is already present in the frames.
             return (my_btree[btree_ptr],0)
