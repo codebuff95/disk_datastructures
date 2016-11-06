@@ -15,3 +15,6 @@ class MMU:
             if len(self.frames) > 8:
                 self.frames = self.frames[1:]
             return (my_btree[btree_ptr],1)
+    def write_block(self,my_btree,key,value):
+        my_btree[str(key)] = value
+        return 1

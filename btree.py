@@ -3,6 +3,7 @@ import shelve,mmu,sys
 MAX_KEYS = 5
 ROOT_PTR = '-1'
 NONE_PTR = '-2'
+NODE_COUNT_PTR = '-3'
 class Node:
     def __init__(self):
         self.keys = []  #a list of tuples, each of format: (key,location)
@@ -43,24 +44,44 @@ class BTree:
             while i < len(cur_node.keys):
                 if requested_key == cur_node.keys[i][0]:
                     return (cur_node.keys[i],disk_access_count)
-                elif requested_key > cur_node.keys[i][0]:
+                elif requested_key < cur_node.keys[i][0]:
                     break
                 i += 1
 
             (cur_node,local_d_a_c) = self.get_node(cur_node.get_child_ptr(i))
             disk_access_count += local_d_a_c
         return (None,disk_access_count) #disk_access_count is returned, even if the key is not found.
+    def persist_changes(self,key,value):
+        return self.mmu.write_block(self.tree,key,value)
+
+    def get_new_node_ptr(self):
+        return int(self.mmu.retrieve_block(self.tree,NODE_COUNT_PTR)[0]) + 1
+
     def split_node(self,childptr,parentptr):
+        """splits a non-root node."""
         (parent_node,local_d_a_c) = self.get_node(parentptr)
         (child_node,local_d_a_c) = self.get_node(childptr)
-        mid_key = child_node[MAX_KEYS/2]
+        mid_key = child_node.keys[MAX_KEYS/2]
         ins_index = 0
         while ins_index < len(parent_node.keys):
-            if mid_key > parent_node.keys[ins_index][0]:
+            if mid_key < parent_node.keys[ins_index][0]:
                 break
             ins_index += 1
 
-        
+        parent_node.keys.insert(ins_index,mid_key)
+        #child_node ins_index + 1 childptr will get the newly created node.
+        new_node = Node()
+        new_node.keys = child_node.keys[(MAX_KEYS/2)+1:]
+        new_node.childs = child_node.childs[(MAX_KEYS/2)+1:]
+        child_node.keys = child_node.keys[:(MAX_KEYS/2)]
+        child_node.childs = child_node.childs[:(MAX_KEYS/2)+1]
+        new_node_ptr = self.get_new_node_ptr()
+        parent_node.childs.insert(ins_index+1,new_node_ptr)
+        self.persist_changes(parentptr,parent_node)
+        self.persist_changes(childptr,child_node)
+        self.persist_changes(new_node_ptr,new_node)
+        self.persist_changes(NODE_COUNT_PTR,new_node_ptr)
+
     def insert_key(self,key,data):
         #key = key to be inserted, data = data to be inserted.
         (key,disk_access_count) = self.get_key(key)
@@ -74,7 +95,7 @@ class BTree:
             i = 0
             child_node_ptr = None
             while i < len(cur_node.keys):
-                if key > cur_node.keys[i][0]:
+                if key < cur_node.keys[i][0]:
                     break
                 i += 1
             child_node_ptr = cur_node.get_child_ptr(i)
