@@ -112,6 +112,7 @@ class BTree:
         self.persist_changes(parentptr,parent_node)
         self.persist_changes(childptr,child_node)
         self.persist_changes(new_node_ptr,new_node)
+
     def insert_seed(self,key,data):
         try:
             root,local_d_a_c = self.get_root()
@@ -123,7 +124,7 @@ class BTree:
         self.persist_changes(ROOT_PTR,new_root)
         return 1    #1 disk access done.
     def insert_key(self,key,data):
-        #key = key to be inserted, data = data to be inserted.
+        #key = key to be inserted, data = data corresponding to the key.
         try:
             (cur_node,local_d_a_c) = self.get_root()
         except NodeNotExistsError:
@@ -137,6 +138,7 @@ class BTree:
             #root is full. split root.
             self.split_root()
             return self.insert_key(key,data)
+        
         while len(cur_node.childs) > 0:
             #while cur_node is not a leaf.
             i = 0

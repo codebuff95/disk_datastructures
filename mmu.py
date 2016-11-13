@@ -14,7 +14,7 @@ class MMU:
         else:
             #the block is not already present in the frames.
             self.frames.append(btree_ptr)
-            if len(self.frames) > 8:
+            if len(self.frames) > MAX_FRAMES:
                 self.frames = self.frames[1:]
             return (my_btree[btree_ptr],1)
     def write_block(self,my_btree,key,value):
