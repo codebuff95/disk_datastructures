@@ -12,4 +12,4 @@ with btree.BTree('data/bank.sf') as my_bt, shelve.open('data/accounts_data.sf',w
             continue
         data_loc = my_key[0][1]
         my_acc = ad_sf[data_loc]
-        print('Account details:\n',my_acc)
+        print(my_acc)

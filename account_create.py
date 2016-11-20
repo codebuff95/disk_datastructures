@@ -23,9 +23,7 @@ with open('data/first_names') as fn_f:
     fnames = [line.strip() for line in fn_f]
 with open('data/last_names') as ln_f:
     lnames = [line.strip() for line in ln_f]
-bank_f_n = 'data/bank.sf'
-acc_f_n = 'data/accounts_data.sf'
-acc_create_log_f_n = 'data/create.log'
+
 def generate_random_account():
     global fnames,lnames
     holder_name = fnames[randint(0,len(fnames)-1)] + ' ' + lnames[randint(0,len(lnames)-1)]
@@ -43,8 +41,8 @@ def generate_random_account():
 
 def create_single_account(my_acc):
     """ returns the number of disk accesses taken for account creation """
-    global acc_f_n, bank_f_n
-    with btree.BTree(bank_f_n) as my_bt, shelve.open(acc_f_n,writeback=True) as ad_sf, open(acc_create_log_f_n,'at',encoding='utf-8') as acc_create_log_f:
+    #global bank.acc_f_n, bank.bank_f_n
+    with btree.BTree(bank.bank_f_n) as my_bt, shelve.open(bank.acc_f_n,writeback=True) as ad_sf, open(bank.acc_create_log_f_n,'at',encoding='utf-8') as acc_create_log_f:
         try:
             no_of_accounts = ad_sf['no_of_accounts']
         except KeyError:
@@ -57,12 +55,12 @@ def create_single_account(my_acc):
         return my_bt.insert_key(my_acc.acc_no,str(no_of_accounts+1))
 
 def start_bulk_creation(n):
-    global acc_f_n, bank_f_n
+    #global bank.acc_f_n, bank.bank_f_n
     """ n = number of accounts to be created.
         returns total number of disk accesses taken to insert the n elements.
     """
     #sys.stdout = open('data/acc_creation.log','at',encoding='utf-8')
-    with btree.BTree(bank_f_n) as my_bt, shelve.open(acc_f_n,writeback=True) as ad_sf, open(acc_create_log_f_n,'at',encoding='utf-8') as acc_create_log_f:
+    with btree.BTree(bank.bank_f_n) as my_bt, shelve.open(bank.acc_f_n,writeback=True) as ad_sf, open(bank.acc_create_log_f_n,'at',encoding='utf-8') as acc_create_log_f:
         try:
             no_of_accounts = ad_sf['no_of_accounts']
         except KeyError:

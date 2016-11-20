@@ -1,5 +1,11 @@
 from random import randint
 from io import StringIO
+from prettytable import PrettyTable
+
+bank_f_n = 'data/bank.sf'
+acc_f_n = 'data/accounts_data.sf'
+acc_create_log_f_n = 'data/create.log'
+
 class Transaction:
     def __init__(self,amount,when):
         self.amount = amount
@@ -25,8 +31,14 @@ class Account:
         return s
     def __str__(self):
         out = StringIO()
-        out.write('Account Number: ' + str(self.acc_no) +'\nHolder Name: '+ str(self.holder_name) + '\nCreated On: ' + str(self.created_on) + '\n')
-        out.write('Transactions: ')
+        out.write('Account Details:\n')
+        t = PrettyTable(['Account Attribute', 'Value'])
+        t.add_row(['Acc Number',str(self.acc_no)])
+        t.add_row(['Holder Name',str(self.holder_name)])
+        t.add_row(['Created On',str(self.created_on)])
+        out.write(str(t) + '\n\nAccount Transactions:\n')
+        t = PrettyTable(['Time', 'Amount'])
         for transaction in self.transactions:
-            out.write(str(transaction) + '\n')
+            t.add_row([transaction.time_stamp,transaction.amount])
+        out.write(str(t) + '\n\n')
         return out.getvalue()

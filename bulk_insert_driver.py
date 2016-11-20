@@ -1,7 +1,6 @@
 import account_create,btree
 from math import log
-
-bank_f_n = 'data/bank.sf'
+from bank import bank_f_n
 ins_n = [0,100,200,300,400,500,600,700,800,900,1000,1500,2000,2500,3000,3500,4000,4500,5000,10000,20000,30000,40000,50000,75000,100000]
 if __name__ == '__main__':
     i = 0
@@ -12,4 +11,4 @@ if __name__ == '__main__':
             local_d_a_c = account_create.create_single_account(account_create.generate_random_account())
             with btree.BTree(bank_f_n) as my_bt:
                 h = my_bt.get_height()
-            r_f.write(str(ins_n[i]) + ',' + str(h) + ',' + str(local_d_a_c) + ',' + str(log(ins_n[i])/log(5)) + '\n')
+            r_f.write(str(ins_n[i]) + ',' + str(h) + ',' + str(local_d_a_c) + ',' + str(log(ins_n[i])/log(6)) + '\n')
